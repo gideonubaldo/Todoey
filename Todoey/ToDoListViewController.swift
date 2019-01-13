@@ -10,7 +10,7 @@ import UIKit
 
 class ToDoListViewController: UITableViewController {
 
-    let itemArray = ["Take shower", "pay debt", "Exercise"]
+    var itemArray = ["Take shower", "pay debt", "Exercise"]
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -43,6 +43,38 @@ class ToDoListViewController: UITableViewController {
         
         //this is to deselect the item after being highligted
         tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    //pragma mark
+    
+    //MARK - Add New Items
+    @IBAction func addBUttonPressed(_ sender: UIBarButtonItem){
+        
+        var textField = UITextField()
+        
+        //both alert and action are in the same modal. one is the mesage with title and another with the button action
+        
+        //this is to alert pop up
+        let alert = UIAlertController(title: "Add New Todoey Item", message: "", preferredStyle: .alert)
+        
+        
+        let action  = UIAlertAction(title: "Add Item", style: .default) { (action) in
+            //what will happen once the user clocks the Add item button on our UIAlert
+            self.itemArray.append(textField.text!)
+            
+            //after this we have to reload the whole table
+            self.tableView.reloadData()
+        }
+        //this is binding the action to the alert message
+         alert.addAction(action)
+        
+        alert.addTextField { (alertTextField) in
+            alertTextField.placeholder = "Create new item"
+            textField = alertTextField
+        }
+        
+        //this is actually the thing that makes it show
+        present(alert, animated: true, completion: nil)
     }
     
     
