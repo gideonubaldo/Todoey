@@ -11,28 +11,24 @@ import UIKit
 class ToDoListViewController: UITableViewController {
     
     //this is for the database
-    let defaults = UserDefaults.standard
+//    let defaults = UserDefaults.standard
     
     var itemArray = [Item]()
     
+    //looking for the documentdirectory in the userdomainmask
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    
     override func viewDidLoad() {
         super.viewDidLoad()
+    
         
-        let newItem = Item()
-        newItem.title = "Say hello"
-        itemArray.append(newItem)
+        print(dataFilePath!)
         
-        let newItem2 = Item()
-        newItem.title = "excercise"
-        itemArray.append(newItem2)
+        loadItems()
         
-        let newItem3 = Item()
-        newItem.title = "shop"
-        itemArray.append(newItem3)
-        
-        if let items = defaults.array(forKey: "ToDoListArray") as? [Item]{
-            itemArray = items
-        }
+//        if let items = defaults.array(forKey: "ToDoListArray") as? [Item]{
+//            itemArray = items
+//        }
     }
     
     // the number of rows in the table view
@@ -65,16 +61,10 @@ class ToDoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
 //        print(itemArray[indexPath.row])
         
+        //this only reflects on the array and not in the database so far
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
-        //this is to reload data
-        tableView.reloadData()
-        //this is so that we put an accessory after tapping to the selected cell and removing it if does have something
-//        if tableView.cellForRow(at: indexPath)?.accessoryType == .checkmark {
-//            tableView.cellForRow(at: indexPath)?.accessoryType = .none
-//        }else{
-//            tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
-//        }
+        saveItems()
         
         //this is to deselect the item after being highligted
         tableView.deselectRow(at: indexPath, animated: true)
@@ -101,10 +91,9 @@ class ToDoListViewController: UITableViewController {
             
             self.itemArray.append(newItem)
             
-            self.defaults.setValue(self.itemArray, forKey: "ToDoListArray")
+            let encoder = PropertyListEncoder()
             
-            //after this we have to reload the whole table
-            self.tableView.reloadData()
+            self.saveItems()
         }
         //this is binding the action to the alert message
          alert.addAction(action)
@@ -118,6 +107,29 @@ class ToDoListViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
+    //MARK - Model Manipulation Methods
     
+    func saveItems(){
+        let encoder = PropertyListEncoder()
+        
+        //this is writing it into a plist but not in the userdefault but into the Filemanager. this works because we encode the customize class; this wont work if it was in the user default.standard
+        do{
+            let data = try encoder.encode(itemArray)
+            try data.write(to: dataFilePath!)
+        }catch{
+            print("Error encoding item array,\(error)")
+        }
+         self.tableView.reloadData()
+    }
+    func loadItems() {
+        if let data = try? Data(contentsOf: dataFilePath!){
+            let decoder = PropertyListDecoder()
+            do {
+                itemArray = try decoder.decode([Item].self, from: data)
+            }catch{
+                print("Error decoding item array")
+            }
+        }
+    }
 }
 
