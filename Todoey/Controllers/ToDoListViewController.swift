@@ -7,22 +7,30 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoListViewController: UITableViewController {
     
     //this is for the database
 //    let defaults = UserDefaults.standard
     
+    //looking for the documentdirectory in the userdomainmask
+    //    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    
+//    @IBOutlet weak var searchBar: UISearchBar!
+    
     var itemArray = [Item]()
     
-    //looking for the documentdirectory in the userdomainmask
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+    //container/database management
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
     
+    print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
         
-        print(dataFilePath!)
+        //in order to delagate the info, you must declare it first say an IBOutlet
+//        searchBar.delegate = self
         
         loadItems()
         
@@ -61,8 +69,19 @@ class ToDoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
 //        print(itemArray[indexPath.row])
         
-        //this only reflects on the array and not in the database so far
-        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
+        
+//        //this would just delete it in the context.
+//        context.delete(itemArray[indexPath.row])
+//
+//        //this would just remove the item in the table array which is used to load them up
+//        itemArray.remove(at: indexPath.row)
+        
+        
+            // code below would work if I want a particular cell to be deleted
+//        itemArray[indexPath.row].setValue("Completed", forKey: "title")
+        
+        //this only reflects on the array and not in the database so far. the following code below flips the current property of done
+//        itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
         saveItems()
         
@@ -86,8 +105,9 @@ class ToDoListViewController: UITableViewController {
         let action  = UIAlertAction(title: "Add Item", style: .default) { (action) in
             //what will happen once the user clocks the Add item button on our UIAlert
             
-            let newItem = Item()
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
             
             self.itemArray.append(newItem)
             
@@ -114,22 +134,52 @@ class ToDoListViewController: UITableViewController {
         
         //this is writing it into a plist but not in the userdefault but into the Filemanager. this works because we encode the customize class; this wont work if it was in the user default.standard
         do{
-            let data = try encoder.encode(itemArray)
-            try data.write(to: dataFilePath!)
+           try context.save()
         }catch{
-            print("Error encoding item array,\(error)")
+            print("Error saving context \(error)")
         }
          self.tableView.reloadData()
     }
-    func loadItems() {
-        if let data = try? Data(contentsOf: dataFilePath!){
-            let decoder = PropertyListDecoder()
-            do {
-                itemArray = try decoder.decode([Item].self, from: data)
-            }catch{
-                print("Error decoding item array")
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+        do{
+            //try and fectch the request and then assign it to the itemArray
+        itemArray = try context.fetch(request)
+        } catch {
+            print("Error fetching from context \(error)")
+        }
+        tableView.reloadData()
+    }
+}
+
+//MARK: - Search bar methods
+//this is to modular the delegation and functionality
+//the delegation has been made through connection from the main story board. and so we know which "searchBar" this one is pertaining to
+extension ToDoListViewController: UISearchBarDelegate {
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+       
+        //query language;NSPredicate. the searchBar.text! would then be put in the %@ placeholder. the cd means its case and diacritic insentitive. diacritic is the letter with different symbols to complete them
+        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        //since the descriptor could take multiple descriptor, and could be put into the array. in our case, we only care about the title
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+
+        //this is the fetching itself
+        loadItems(with: request)
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0 {
+            loadItems()
+            
+//            this is for memory management... this 2 blocks of code remove the cursor from the searchbar.dispathcqueue is mainly so that it could be done quick.
+            //note that there is only one main thread. the one that works most efficiently. Dispatch queue is the manager. main is the main thread.
+            DispatchQueue.main.async {
+                 //dismiss keyboard and remove the cursor from the searchbar
+                searchBar.resignFirstResponder()
             }
         }
+        
     }
 }
 
