@@ -21,6 +21,14 @@ class ToDoListViewController: UITableViewController {
     
     var itemArray = [Item]()
     
+    //loadItems function would be loaded up as soon as selectedCategory runs
+    var selectedCategory : Category? {
+        didSet{
+            loadItems()
+            print("didSet")
+        }
+    }
+    
     //container/database management
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
@@ -31,8 +39,6 @@ class ToDoListViewController: UITableViewController {
         
         //in order to delagate the info, you must declare it first say an IBOutlet
 //        searchBar.delegate = self
-        
-        loadItems()
         
 //        if let items = defaults.array(forKey: "ToDoListArray") as? [Item]{
 //            itemArray = items
@@ -65,7 +71,7 @@ class ToDoListViewController: UITableViewController {
         return cell
     }
     
-    //MARK - TableView delegate methods
+    //MARK: - TableView delegate methods
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
 //        print(itemArray[indexPath.row])
         
@@ -91,7 +97,7 @@ class ToDoListViewController: UITableViewController {
     
     //pragma mark
     
-    //MARK - Add New Items
+    //MARK: - Add New Items
     @IBAction func addBUttonPressed(_ sender: UIBarButtonItem){
         
         var textField = UITextField()
@@ -108,10 +114,9 @@ class ToDoListViewController: UITableViewController {
             let newItem = Item(context: self.context)
             newItem.title = textField.text!
             newItem.done = false
+            newItem.parentCategory = self.selectedCategory
             
             self.itemArray.append(newItem)
-            
-            let encoder = PropertyListEncoder()
             
             self.saveItems()
         }
@@ -127,11 +132,9 @@ class ToDoListViewController: UITableViewController {
         present(alert, animated: true, completion: nil)
     }
     
-    //MARK - Model Manipulation Methods
+    //MARK: - Model Manipulation Methods
     
     func saveItems(){
-        let encoder = PropertyListEncoder()
-        
         //this is writing it into a plist but not in the userdefault but into the Filemanager. this works because we encode the customize class; this wont work if it was in the user default.standard
         do{
            try context.save()
@@ -140,7 +143,16 @@ class ToDoListViewController: UITableViewController {
         }
          self.tableView.reloadData()
     }
-    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest()) {
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(), predicate: NSPredicate? = nil) {
+
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+
+        if let additionalPredicate = predicate {
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate, additionalPredicate])
+        }else{
+            request.predicate = categoryPredicate
+        }
+        
         do{
             //try and fectch the request and then assign it to the itemArray
         itemArray = try context.fetch(request)
@@ -159,13 +171,13 @@ extension ToDoListViewController: UISearchBarDelegate {
         let request : NSFetchRequest<Item> = Item.fetchRequest()
        
         //query language;NSPredicate. the searchBar.text! would then be put in the %@ placeholder. the cd means its case and diacritic insentitive. diacritic is the letter with different symbols to complete them
-        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
         
         //since the descriptor could take multiple descriptor, and could be put into the array. in our case, we only care about the title
         request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
 
         //this is the fetching itself
-        loadItems(with: request)
+        loadItems(with: request, predicate: predicate)
     }
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
