@@ -15,6 +15,7 @@ class ToDoListViewController: UITableViewController {
     var todoItems : Results<Item>?
     let realm = try! Realm()
     
+    
     //loadItems function would be loaded up as soon as selectedCategory runs
     var selectedCategory : Category? {
         didSet{
