@@ -37,24 +37,34 @@ class ToDoListViewController: SwipeTableViewController {
     
     //this will be called before view Did Load.
     override func viewWillAppear(_ animated: Bool) {
-        if let colorHex = selectedCategory?.color {
-            
-            title = selectedCategory!.name
-            
-            //this is for the programmer to see
-            guard let navBar = navigationController?.navigationBar else { fatalError("Navigation controller does not exist...")}
-            
-            if let navBarColor = UIColor(hexString: colorHex){
-            
-            navBar.barTintColor = navBarColor
-                
-            navBar.tintColor = ContrastColorOf(navBarColor, returnFlat: true)
-            
-                navBar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor : ContrastColorOf(navBarColor, returnFlat: true)]
-                
-            searchBar.barTintColor = navBarColor
-            }
-        }
+         title = selectedCategory?.name
+        
+        guard let colorHex = selectedCategory?.color else { fatalError() }
+        
+        updateNavBar(withHexCode: colorHex)
+
+    }
+    //will be called just before the view gets destroyed
+    override func viewWillDisappear(_ animated: Bool) {
+        //remember there is only one color of navigation bar for the whole program. this one is just resetting it back to the initial set-up
+        updateNavBar(withHexCode: "1D9BF6")
+    }
+    
+    //MARK: - Nav Bar Setup nethods
+    
+    func updateNavBar(withHexCode colorHexCode : String){
+        //this is for the programmer to see
+        guard let navBar = navigationController?.navigationBar else { fatalError("Navigation controller does not exist...")}
+        
+        guard let navBarColor = UIColor(hexString: colorHexCode) else { fatalError() }
+        
+        navBar.barTintColor = navBarColor
+        
+        navBar.tintColor = ContrastColorOf(navBarColor, returnFlat: true)
+        
+        navBar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor : ContrastColorOf(navBarColor, returnFlat: true)]
+        
+        searchBar.barTintColor = navBarColor
     }
     
     
