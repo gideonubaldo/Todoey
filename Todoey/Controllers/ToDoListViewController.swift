@@ -8,13 +8,15 @@
 
 import UIKit
 import RealmSwift
+import ChameleonFramework
 
-class ToDoListViewController: UITableViewController {
+class ToDoListViewController: SwipeTableViewController {
     
     
     var todoItems : Results<Item>?
     let realm = try! Realm()
     
+    @IBOutlet weak var searchBar: UISearchBar!
     
     //loadItems function would be loaded up as soon as selectedCategory runs
     var selectedCategory : Category? {
@@ -27,15 +29,34 @@ class ToDoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        tableView.separatorStyle = .none
+
+        //the locaiton of the data in computer
         print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
-        
-        //in order to delagate the info, you must declare it first say an IBOutlet
-        //        searchBar.delegate = self
-        
-        //        if let items = defaults.array(forKey: "ToDoListArray") as? [Item]{
-        //            itemArray = items
-        //        }
     }
+    
+    //this will be called before view Did Load.
+    override func viewWillAppear(_ animated: Bool) {
+        if let colorHex = selectedCategory?.color {
+            
+            title = selectedCategory!.name
+            
+            //this is for the programmer to see
+            guard let navBar = navigationController?.navigationBar else { fatalError("Navigation controller does not exist...")}
+            
+            if let navBarColor = UIColor(hexString: colorHex){
+            
+            navBar.barTintColor = navBarColor
+                
+            navBar.tintColor = ContrastColorOf(navBarColor, returnFlat: true)
+            
+                navBar.largeTitleTextAttributes = [NSAttributedString.Key.foregroundColor : ContrastColorOf(navBarColor, returnFlat: true)]
+                
+            searchBar.barTintColor = navBarColor
+            }
+        }
+    }
+    
     
     // the number of rows in the table view
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -46,17 +67,26 @@ class ToDoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         print("draw cell")
         
-        
-        //this would still work but as soon as this cell gets out of the screen, it would be destroyed and would be created as a new cell soon as it in the screen
-        //        let cell = UITableViewCell(style: .default , reuseIdentifier: "ToDoItemCell")
-        
-        //cell gets reused for the other cell
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         if let item = todoItems?[indexPath.row]  {
         
-        //indexpath is consisted of a lot of things so you have to specify which one are you pertaining to.
         cell.textLabel?.text = item.title
+        
+        //we can force unwrapped the todoItems since at this point we know that todoItems is not empty because its within if let optional binding
+            if let color = UIColor(hexString: selectedCategory!.color)?.darken(byPercentage:(CGFloat(indexPath.row) / (CGFloat(todoItems!.count)))){
+            cell.backgroundColor = color
+            cell.textLabel?.textColor = ContrastColorOf(color, returnFlat: true)
+        }
+        
+            
+        //indexPath always start with index 0
+        //whole number divided by whole number = whole number, for our reason, the second version is more needed
+//        print("Version 1: \(CGFloat(indexPath.row / todoItems!.count))")
+        
+        //float divided float = float
+//        print("Version 2: \(CGFloat(indexPath.row) / (CGFloat(todoItems!.count)))")
+        
         
         cell.accessoryType = item.done ? .checkmark : .none
         
@@ -136,6 +166,19 @@ class ToDoListViewController: UITableViewController {
         todoItems = selectedCategory?.items.sorted(byKeyPath: "title", ascending: true)
         
         tableView.reloadData()
+    }
+    override func updateModel(at indexPath: IndexPath) {
+        
+        if let item = todoItems?[indexPath.row] {
+            do{
+            try realm.write {
+                realm.delete(item)
+                }
+            }
+            catch{
+                ("Error deleting cell, \(error)")
+            }
+        }
     }
 }
 

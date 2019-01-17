@@ -8,9 +8,9 @@
 
 import UIKit
 import RealmSwift
-import SwipeCellKit
+import ChameleonFramework
 
-class CategoryViewController: UITableViewController {
+class CategoryViewController: SwipeTableViewController {
     
     let realm = try! Realm()
     
@@ -21,7 +21,7 @@ class CategoryViewController: UITableViewController {
         
         loadCategories()
         
-        tableView.rowHeight = 80
+        tableView.separatorStyle = .none
     }
     
     //MARK: - TableView Datasource Methods
@@ -30,22 +30,15 @@ class CategoryViewController: UITableViewController {
         //if categories is not nil then return 1 instead
         return categories?.count ?? 1
     }
-    
-//    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-//        let cell = tableView.dequeueReusableCell(withIdentifier: "Cell") as! SwipeTableViewCell
-//        cell.delegate = self
-//        return cell
-//    }
-    
-    
+
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        print("cellforRowat")
-        let cell = tableView.dequeueReusableCell(withIdentifier: "CategoryCell", for: indexPath) as! SwipeTableViewCell
-        
-        cell.delegate = self
+        //because we call super, the tableView cellforrowat gets triggered and get the cell
+        let cell = super.tableView(tableView, cellForRowAt: indexPath)
         
         cell.textLabel?.text = categories?[indexPath.row].name ?? "No Categories Added Yet"
+        
+        cell.backgroundColor = UIColor(hexString: categories?[indexPath.row].color ?? "1D9BF6")
         
         return cell
     }
@@ -88,6 +81,22 @@ class CategoryViewController: UITableViewController {
         tableView.reloadData()
     }
     
+    //MARK: - Delete Data from swipe
+    
+    override func updateModel(at indexPath: IndexPath) {
+        //  since some of the variables here are global, we need to specify self in order to succint in what we're pertianing to since this is a closure
+        if let category = self.categories?[indexPath.row] {
+            do{
+                try self.realm.write {
+                    self.realm.delete(category)
+                }
+            }catch{
+                print("Error deleting category, \(error)")
+            }
+            //theres no need to reload since the editActionsOptionsForRowAt has been implement which do the deleting part
+        }
+    }
+    
     @IBAction func addButtonPressed(_ sender: UIBarButtonItem) {
         
         var textField = UITextField()
@@ -98,6 +107,7 @@ class CategoryViewController: UITableViewController {
             
             let newCategory = Category()
             newCategory.name = textField.text!
+            newCategory.color = UIColor.randomFlat.hexValue()
             
             self.save(category: newCategory)
         }
@@ -109,41 +119,5 @@ class CategoryViewController: UITableViewController {
         }
         
         present(alert, animated: true, completion: nil)
-    }
-}
-
-//MARK: - Swipe Cell Delegate Method
-extension CategoryViewController: SwipeTableViewCellDelegate {
-    func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath, for orientation: SwipeActionsOrientation) -> [SwipeAction]? {
-        guard orientation == .right else { return nil }
-        
-        //this is when it gets deleted
-        let deleteAction = SwipeAction(style: .destructive, title: "Delete") { action, indexPath in
-            // handle action by updating model with deletion
-            print("Item deleted")
-            
-            //since some of the variables here are global, we need to specify self in order to succint in what we're pertianing to since this is a closure
-            if let category = self.categories?[indexPath.row] {
-                do{
-                    try self.realm.write {
-                        self.realm.delete(category)
-                    }
-                }catch{
-                    print("Error deleting category, \(error)")
-                }
-                //theres no need to reload since the editActionsOptionsForRowAt has been implement which do the deleting part
-            }
-        }
-        
-        // customize the action appearance
-        deleteAction.image = UIImage(named: "delete-icon")
-        
-        return [deleteAction]
-    }
-    
-    func tableView(_ tableView: UITableView, editActionsOptionsForRowAt indexPath: IndexPath, for orientation: SwipeActionsOrientation) -> SwipeOptions {
-        var options = SwipeOptions()
-        options.expansionStyle = .destructive
-        return options
     }
 }
